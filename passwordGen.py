@@ -9,7 +9,7 @@ from random import randint
 from tabulate import tabulate
 from password_strength import PasswordStats
 
-class MyModel(tf.keras.Model):
+class RNNModel(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, rnn_units):
         super().__init__(self)
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
@@ -72,7 +72,7 @@ class OneStep(tf.keras.Model):
         # Return the characters and model state.
         return predicted_chars, states
 
-class CustomTraining(MyModel):
+class CustomTraining(RNNModel):
     @tf.function
     def train_step(self, inputs):
         inputs, labels = inputs
@@ -157,18 +157,9 @@ for input_example, target_example in dataset.take(1):
     print("Target:", text_from_ids(target_example).numpy())
 
 BATCH_SIZE = 64
-
-# Buffer size to shuffle the dataset
-# (TF data is designed to work with possibly infinite sequences,
-# so it doesn't attempt to shuffle the entire sequence in memory. Instead,
-# it maintains a buffer in which it shuffles elements).
 BUFFER_SIZE = 10000
 
-dataset = (
-    dataset
-    .shuffle(BUFFER_SIZE)
-    .batch(BATCH_SIZE, drop_remainder=True)
-    .prefetch(tf.data.experimental.AUTOTUNE))
+dataset = (dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
 
 print(dataset)
 
@@ -176,11 +167,9 @@ vocab_size = len(ids_from_chars.get_vocabulary())
 
 # The embedding dimension
 embedding_dim = 256
-
-# Number of RNN units
 rnn_units = 1024
 
-model = MyModel(vocab_size=vocab_size, embedding_dim=embedding_dim, rnn_units=rnn_units)
+model = RNNModel(vocab_size=vocab_size, embedding_dim=embedding_dim, rnn_units=rnn_units)
 for input_example_batch, target_example_batch in dataset.take(1):
     example_batch_predictions = model(input_example_batch)
     print(example_batch_predictions.shape, "# (batch_size, sequence_length, vocab_size)")
@@ -211,7 +200,7 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt_{epoch}")
 
 checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_prefix, save_weights_only=True)
-EPOCHS = 2
+EPOCHS = 5
 history = model.fit(dataset, epochs=EPOCHS, callbacks=[tensorboard_callback])
 
 one_step_model = OneStep(model, chars_from_ids, ids_from_chars)
@@ -231,12 +220,14 @@ resultantPasswords = result[0].numpy().decode('utf-8').split('\r\n')
 print(result[0].numpy().decode('utf-8'), '\n\n', type(result[0].numpy().decode('utf-8')))
 print(resultantPasswords)
 
-genPasswords, tempCounter = [], 0
-for i in range(len(resultantPasswords)):
-    if len(resultantPasswords[i].replace('PASSWORDS:', '')) > 0:
-        genPasswords.append([tempCounter, resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength()])
-    # genPasswords.append([tempCounter, combPassword.replace('PASSWORDS:', ''), PasswordStats(combPassword.replace('PASSWORDS:', '')).strength()])
-        tempCounter += 1
+with open('genPasswords.txt', 'a') as outputFile:
+    genPasswords, tempCounter = [], 0
+    for i in range(len(resultantPasswords)):
+        if len(resultantPasswords[i].replace('PASSWORDS:', '')) > 0:
+            genPasswords.append([tempCounter, resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength()])
+            outputFile.write(f"{resultantPasswords[i].replace('PASSWORDS:', '')}\n")
+        # genPasswords.append([tempCounter, combPassword.replace('PASSWORDS:', ''), PasswordStats(combPassword.replace('PASSWORDS:', '')).strength()])
+            tempCounter += 1
 
 print(tabulate(genPasswords, headers = ['ID', 'Password', 'Entropy', 'Strength'], tablefmt = 'psql'))
 # print(result[0].numpy().decode('utf-8'), '\n\n' + '_'*80)
