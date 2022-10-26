@@ -4,6 +4,7 @@ import time
 import math
 import datetime
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from random import randint
 from tabulate import tabulate
@@ -37,39 +38,24 @@ class OneStep(tf.keras.Model):
         self.chars_from_ids = chars_from_ids
         self.ids_from_chars = ids_from_chars
 
-        # Create a mask to prevent "[UNK]" from being generated.
         skip_ids = self.ids_from_chars(['[UNK]'])[:, None]
-        sparse_mask = tf.SparseTensor(
-            # Put a -inf at each bad index.
-            values=[-float('inf')]*len(skip_ids),
-            indices=skip_ids,
-            # Match the shape to the vocabulary
-            dense_shape=[len(ids_from_chars.get_vocabulary())])
+        sparse_mask = tf.SparseTensor(values=[-float('inf')]*len(skip_ids), indices=skip_ids, dense_shape=[len(ids_from_chars.get_vocabulary())])
         self.prediction_mask = tf.sparse.to_dense(sparse_mask)
 
     @tf.function
     def generate_one_step(self, inputs, states=None):
-        # Convert strings to token IDs.
         input_chars = tf.strings.unicode_split(inputs, 'UTF-8')
         input_ids = self.ids_from_chars(input_chars).to_tensor()
 
-        # Run the model.
-        # predicted_logits.shape is [batch, char, next_char_logits]
         predicted_logits, states = self.model(inputs=input_ids, states=states, return_state=True)
-        # Only use the last prediction.
         predicted_logits = predicted_logits[:, -1, :]
         predicted_logits = predicted_logits/self.temperature
-        # Apply the prediction mask: prevent "[UNK]" from being generated.
         predicted_logits = predicted_logits + self.prediction_mask
 
-        # Sample the output logits to generate token IDs.
         predicted_ids = tf.random.categorical(predicted_logits, num_samples=1)
         predicted_ids = tf.squeeze(predicted_ids, axis=-1)
 
-        # Convert from token ids to characters
         predicted_chars = self.chars_from_ids(predicted_ids)
-
-        # Return the characters and model state.
         return predicted_chars, states
 
 class CustomTraining(RNNModel):
@@ -95,8 +81,6 @@ def split_input_target(sequence):
 mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
 path_to_file = tf.keras.utils.get_file('rockYouWithNoob.txt', 'https://raw.githubusercontent.com/rushilchoksi/Neural-Network-Password-Generator/main/Password%20files/rockYou.txt')
 text = open(path_to_file, 'rb').read().decode(encoding='utf-8')[:200000]
-# input(f'\nData: {text}\n')
-# length of text is the number of characters in it
 
 newText = ''
 for i in text:
@@ -165,7 +149,6 @@ print(dataset)
 
 vocab_size = len(ids_from_chars.get_vocabulary())
 
-# The embedding dimension
 embedding_dim = 256
 rnn_units = 1024
 
@@ -196,7 +179,6 @@ checkpoint_dir = './training_checkpoints'
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-# Name of the checkpoint files
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt_{epoch}")
 
 checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_prefix, save_weights_only=True)
@@ -226,12 +208,14 @@ with open('genPasswords.txt', 'a') as outputFile:
         if len(resultantPasswords[i].replace('PASSWORDS:', '')) > 0:
             genPasswords.append([tempCounter, resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength()])
             outputFile.write(f"{resultantPasswords[i].replace('PASSWORDS:', '')}\n")
-        # genPasswords.append([tempCounter, combPassword.replace('PASSWORDS:', ''), PasswordStats(combPassword.replace('PASSWORDS:', '')).strength()])
             tempCounter += 1
 
 print(tabulate(genPasswords, headers = ['ID', 'Password', 'Entropy', 'Strength'], tablefmt = 'psql'))
-# print(result[0].numpy().decode('utf-8'), '\n\n' + '_'*80)
 print('\nRun time:', end - start)
+dataFrame = pd.DataFrame.from_records(genPasswords)
+dataFrame.columns = ['ID', 'Password', 'Entropy', 'Strength']
+dataFrame = dataFrame.sort_values(['Strength', 'Entropy'], ascending = [False, False])
+print(dataFrame.head())
 sys.exit(0)
 
 
