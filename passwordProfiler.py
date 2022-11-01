@@ -42,21 +42,26 @@ def genPasswordSet(inputWordsList, dobSuffixData, specialCharsList, parsedDateLi
     return list(set(profiledData))
 
 def generateWordList(firstName, lastName, dateOfBirth):
-    mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
-    specialCharsList = ['!', '@', '#', '$','%', '^', '&', '*', '(', ')']
+    outputFileName = f'{firstName}.{lastName}.txt'
+    with open(outputFileName, 'w') as wordlistFile:
+        mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
+        specialCharsList = ['!', '@', '#', '$','%', '^', '&', '*', '(', ')']
 
-    parsedDate = datetime.strptime(dateOfBirth, '%d%m%Y')
-    parsedDateList = [str(parsedDate.day).zfill(2), str(parsedDate.month).zfill(2), parsedDate.year]
-    finalInputWordList, lastNameWithLeet = returnLeetWords(firstName, mappingDict, specialCharsList), returnLeetWords(lastName, mappingDict, specialCharsList)
-    finalInputWordList.extend(lastNameWithLeet)
+        parsedDate = datetime.strptime(dateOfBirth, '%d%m%Y')
+        parsedDateList = [str(parsedDate.day).zfill(2), str(parsedDate.month).zfill(2), parsedDate.year]
+        finalInputWordList, lastNameWithLeet = returnLeetWords(firstName, mappingDict, specialCharsList), returnLeetWords(lastName, mappingDict, specialCharsList)
+        finalInputWordList.extend(lastNameWithLeet)
 
-    dobSuffixData = set()
-    for dobSuffixLength in range(1, 5):
-        for tempSuffixData in combinations(dateOfBirth, dobSuffixLength):
-            dobSuffixData.add(''.join(tempSuffixData))
+        dobSuffixData = set()
+        for dobSuffixLength in range(1, 5):
+            for tempSuffixData in combinations(dateOfBirth, dobSuffixLength):
+                dobSuffixData.add(''.join(tempSuffixData))
 
-    profiledData = genPasswordSet(finalInputWordList, dobSuffixData, specialCharsList, parsedDateList)
-    profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}')
-    profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}'.lower())
+        profiledData = genPasswordSet(finalInputWordList, dobSuffixData, specialCharsList, parsedDateList)
+        profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}')
+        profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}'.lower())
 
-    return profiledData
+        for tempPassword in profiledData:
+            wordlistFile.write(f'{tempPassword}\n')
+
+    return outputFileName
