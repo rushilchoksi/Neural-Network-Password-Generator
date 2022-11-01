@@ -3,7 +3,7 @@ from datetime import datetime
 from itertools import combinations
 from random import randint, choice
 
-def returnLeetWords(inputWord):
+def returnLeetWords(inputWord, mappingDict, specialCharsList):
     leetCharsList, leetWordsList = [], [inputWord]
     for charValue in inputWord:
         if charValue.lower() in mappingDict.keys():
@@ -14,7 +14,7 @@ def returnLeetWords(inputWord):
 
     return list(set(leetWordsList))
 
-def genPasswordSet(inputWordsList, dobSuffixData):
+def genPasswordSet(inputWordsList, dobSuffixData, specialCharsList, parsedDateList):
     profiledData = []
     for tempName in inputWordsList:
         for specialChar in specialCharsList:
@@ -41,25 +41,22 @@ def genPasswordSet(inputWordsList, dobSuffixData):
 
     return list(set(profiledData))
 
-mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
-specialCharsList = ['!', '@', '#', '$','%', '^', '&', '*', '(', ')']
+def generateWordList(firstName, lastName, dateOfBirth):
+    mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
+    specialCharsList = ['!', '@', '#', '$','%', '^', '&', '*', '(', ')']
 
-firstName = input('Enter first name: ')
-lastName = input('Enter last name: ')
-dateOfBirth = input('Enter date of birth (DDMMYYYY): ')
-parsedDate = datetime.strptime(dateOfBirth, '%d%m%Y')
-parsedDateList = [str(parsedDate.day).zfill(2), str(parsedDate.month).zfill(2), parsedDate.year]
-finalInputWordList, lastNameWithLeet = returnLeetWords(firstName), returnLeetWords(lastName)
-finalInputWordList.extend(lastNameWithLeet)
+    parsedDate = datetime.strptime(dateOfBirth, '%d%m%Y')
+    parsedDateList = [str(parsedDate.day).zfill(2), str(parsedDate.month).zfill(2), parsedDate.year]
+    finalInputWordList, lastNameWithLeet = returnLeetWords(firstName, mappingDict, specialCharsList), returnLeetWords(lastName, mappingDict, specialCharsList)
+    finalInputWordList.extend(lastNameWithLeet)
 
-dobSuffixData = set()
-for dobSuffixLength in range(1, 5):
-    for tempSuffixData in combinations(dateOfBirth, dobSuffixLength):
-        dobSuffixData.add(''.join(tempSuffixData))
+    dobSuffixData = set()
+    for dobSuffixLength in range(1, 5):
+        for tempSuffixData in combinations(dateOfBirth, dobSuffixLength):
+            dobSuffixData.add(''.join(tempSuffixData))
 
-profiledData = genPasswordSet(finalInputWordList, dobSuffixData)
-profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}')
-profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}'.lower())
+    profiledData = genPasswordSet(finalInputWordList, dobSuffixData, specialCharsList, parsedDateList)
+    profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}')
+    profiledData.append(f'{firstName[0]}{lastName[0]}{dateOfBirth}'.lower())
 
-print(sorted(profiledData))
-print(f'Generated {len(profiledData)} passwords for {firstName} {lastName}.')
+    return profiledData
