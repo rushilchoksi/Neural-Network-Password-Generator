@@ -14,7 +14,7 @@ def return_leet_words(inputWord, mappingDict, specialCharsList, outputLength):
         for char_index, char_value in enumerate(inputWord):
             if char_value.lower() in mappingDict.keys():
                 changable_chars_indices.append(char_index)
-        
+
         probaility_of_leet = 0.125
         offset_to_add = 0.35
         leet_word = inputWord
@@ -25,7 +25,7 @@ def return_leet_words(inputWord, mappingDict, specialCharsList, outputLength):
                 changable_chars_indices.remove(random_index)
                 leet_word = leet_word[:random_index] + mappingDict[leet_word[random_index].lower()] + leet_word[random_index + 1:]
                 probaility_of_leet += offset_to_add
-            
+
         # print(leet_word)
         leet_words_list.append(leet_word)
     return leet_words_list
@@ -76,7 +76,7 @@ def generateWordList(firstName, lastName, dateOfBirth):
 
         parsedDate = datetime.strptime(dateOfBirth, '%d%m%Y')
         parsedDateList = [str(parsedDate.day).zfill(2), str(parsedDate.month).zfill(2), parsedDate.year]
-        finalInputWordList, lastNameWithLeet = returnLeetWords(firstName, mappingDict, specialCharsList), returnLeetWords(lastName, mappingDict, specialCharsList)
+        finalInputWordList, lastNameWithLeet = return_leet_words(firstName, mappingDict, specialCharsList, 500), return_leet_words(lastName, mappingDict, specialCharsList, 500)
         finalInputWordList.extend(lastNameWithLeet)
 
         dobSuffixData = set()
@@ -97,6 +97,7 @@ if __name__ == '__main__':
     firstName, lastName, dateOfBirth = 'Dev', 'Patel', '06092001'
     mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
     specialCharsList = ['!', '@', '#', '$','%', '^', '&', '*', '(', ')']
-    keyword="DevPatelisawsome"
+    print(f'Created file {generateWordList(firstName, lastName, dateOfBirth)}.')
+    # keyword="DevPatelisawsome"
     # print(generateWordList(firstName, lastName, dateOfBirth))
-    print(return_leet_words(keyword, mappingDict, specialCharsList,4))
+    # print(return_leet_words(keyword, mappingDict, specialCharsList,4))
