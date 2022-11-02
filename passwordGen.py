@@ -9,6 +9,7 @@ import tensorflow as tf
 from random import randint
 from tabulate import tabulate
 from password_strength import PasswordStats
+from passwordProfiler import generateWordList
 
 class RNNModel(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, rnn_units):
@@ -79,26 +80,58 @@ def split_input_target(sequence):
     return input_text, target_text
 
 mappingDict = {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
-path_to_file = tf.keras.utils.get_file('rockYouWithNoob.txt', 'https://raw.githubusercontent.com/rushilchoksi/Neural-Network-Password-Generator/main/Password%20files/rockYou.txt')
-text = open(path_to_file, 'rb').read().decode(encoding='utf-8')[:200000]
+passwordCount = 5
 
-newText = ''
-for i in text:
-    # print(i, i in mappingDict.keys())
-    if i.lower() in mappingDict.keys():
-        if randint(1, 1) == 1:
-            newText += mappingDict.get(i.lower())
+'''
+Provide three options to user for choosing the input
+password field, pre-configured, custom URL, wordlist generator,
+which would then be passed on to the training process.
+'''
+
+menuOptions = ['Pre-Configured Dataset', 'Custom URL', 'Generate Wordlist']
+for indexVal, optionVal in enumerate(menuOptions):
+    print(f'{indexVal}. {optionVal}')
+userChoice = int(input('Enter your choice: '))
+
+print()
+while userChoice not in range(0,3):
+    userChoice = int(input('Invalid choice, please try again: '))
+
+if userChoice == 0:
+    path_to_file = tf.keras.utils.get_file('rockYouWithNoob.txt', 'https://raw.githubusercontent.com/rushilchoksi/Neural-Network-Password-Generator/main/Password%20files/rockYou.txt')
+    text = open(path_to_file, 'rb').read().decode(encoding='utf-8')[:200000]
+
+    newText = ''
+    for i in text:
+        # print(i, i in mappingDict.keys())
+        if i.lower() in mappingDict.keys():
+            if randint(1, 1) == 1:
+                newText += mappingDict.get(i.lower())
+            else:
+                newText += i
         else:
             newText += i
-    else:
-        newText += i
 
-print(f'Length of text: {len(newText)} characters')
-# Take a look at the first 250 characters in text
-print(newText)
-# The unique characters in the file
-vocab = sorted(set(newText))
-print(f'{len(vocab)} unique characters')
+    print(f'Length of text: {len(newText)} characters')
+    vocab = sorted(set(newText))
+    print(f'{len(vocab)} unique characters')
+
+elif userChoice == 1:
+    customURLValue = input('Enter URL to input file: ')
+    path_to_file = tf.keras.utils.get_file(customURLValue.split('/')[-1], customURLValue)
+    newText = open(path_to_file, 'rb').read().decode(encoding='utf-8')[:200000]
+    vocab = sorted(set(newText))
+    print(f'{len(vocab)} unique characters')
+
+elif userChoice == 2:
+    firstName = input('Enter first name: ')
+    lastName = input('Enter last name: ')
+    dateOfBirth = input('Enter date of birth (DDMMYYYY): ')
+    profiledDataFile = generateWordList(firstName, lastName, dateOfBirth)
+
+    newText = open(profiledDataFile, 'rb').read().decode(encoding='utf-8')
+    vocab = sorted(set(newText))
+    print(f'{len(vocab)} unique characters')
 
 example_texts = ['abcdefg', 'xyz']
 
@@ -198,82 +231,32 @@ for n in range(1000):
 
 result = tf.strings.join(result)
 end = time.time()
-resultantPasswords = result[0].numpy().decode('utf-8').split('\r\n')
-print(result[0].numpy().decode('utf-8'), '\n\n', type(result[0].numpy().decode('utf-8')))
-print(resultantPasswords)
+
+if userChoice == 0:
+    resultantPasswords = result[0].numpy().decode('utf-8').split('\r\n')
+elif userChoice == 1:
+    resultantPasswords = result[0].numpy().decode('utf-8').split('\r\n')[0].split('\n')
+else:
+    resultantPasswords = result[0].numpy().decode('utf-8').split('\n')
 
 with open('genPasswords.txt', 'a') as outputFile:
     genPasswords, tempCounter = [], 0
     for i in range(len(resultantPasswords)):
         if len(resultantPasswords[i].replace('PASSWORDS:', '')) > 0:
-            genPasswords.append([tempCounter, resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength()])
+            genPasswords.append([resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength()])
             outputFile.write(f"{resultantPasswords[i].replace('PASSWORDS:', '')}\n")
             tempCounter += 1
 
-print(tabulate(genPasswords, headers = ['ID', 'Password', 'Entropy', 'Strength'], tablefmt = 'psql'))
 print('\nRun time:', end - start)
+
+if userChoice == 2:
+    print(f'\nTop {passwordCount} passwords generated for {firstName} {lastName}:')
+else:
+    print(f'\nTop {passwordCount} passwords generated using {menuOptions[userChoice].lower()}:')
+
 dataFrame = pd.DataFrame.from_records(genPasswords)
-dataFrame.columns = ['ID', 'Password', 'Entropy', 'Strength']
+dataFrame.columns = ['Password', 'Entropy', 'Strength']
 dataFrame = dataFrame.sort_values(['Strength', 'Entropy'], ascending = [False, False])
-print(dataFrame.head())
-sys.exit(0)
+dataFrame.insert(loc = 0, column = 'Rank', value = range(1, tempCounter + 1))
 
-
-start = time.time()
-states = None
-next_char = tf.constant(['ROMEO:', 'ROMEO:', 'ROMEO:', 'ROMEO:', 'ROMEO:'])
-result = [next_char]
-
-for n in range(1000):
-    next_char, states = one_step_model.generate_one_step(next_char, states=states)
-    result.append(next_char)
-
-result = tf.strings.join(result)
-end = time.time()
-print(result, '\n\n' + '_'*80)
-print('\nRun time:', end - start)
-
-tf.saved_model.save(one_step_model, 'one_step')
-one_step_reloaded = tf.saved_model.load('one_step')
-
-states = None
-next_char = tf.constant(['ROMEO:'])
-result = [next_char]
-
-for n in range(100):
-    next_char, states = one_step_reloaded.generate_one_step(next_char, states=states)
-    result.append(next_char)
-
-print(tf.strings.join(result)[0].numpy().decode("utf-8"))
-
-model = CustomTraining(
-    vocab_size=len(ids_from_chars.get_vocabulary()),
-    embedding_dim=embedding_dim,
-    rnn_units=rnn_units)
-model.compile(optimizer = tf.keras.optimizers.Adam(), loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
-model.fit(dataset, epochs=1)
-
-EPOCHS = 5
-
-mean = tf.metrics.Mean()
-
-for epoch in range(EPOCHS):
-    start = time.time()
-
-    mean.reset_states()
-    for (batch_n, (inp, target)) in enumerate(dataset):
-        logs = model.train_step([inp, target])
-        mean.update_state(logs['loss'])
-
-        if batch_n % 50 == 0:
-            print(f"Epoch {epoch+1} Batch {batch_n} Loss {logs['loss']:.4f}")
-
-    # saving (checkpoint) the model every 5 epochs
-    if (epoch + 1) % 5 == 0:
-        model.save_weights(checkpoint_prefix.format(epoch=epoch))
-
-    print(f'\nEpoch {epoch+1} Loss: {mean.result().numpy():.4f}')
-    print(f'Time taken for 1 epoch {time.time() - start:.2f} sec')
-    print("_"*80)
-
-model.save_weights(checkpoint_prefix.format(epoch=epoch))
+print(dataFrame.head(passwordCount).to_string(index = False))
