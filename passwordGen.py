@@ -3,11 +3,14 @@ import sys
 import time
 import math
 import datetime
+import threading
+import itertools
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from random import randint
 from tabulate import tabulate
+from breachAPI import checkPassword
 from password_strength import PasswordStats
 from passwordProfiler import generateWordList
 
@@ -80,6 +83,15 @@ def splitInputTarget(sequenceData):
     inputText = sequenceData[:-1]
     targetText = sequenceData[1:]
     return inputText, targetText
+
+def showAnimation():
+    for tempSymbol in itertools.cycle(['.  \r', '.. \r', '...\r']):
+        if taskCompleted:
+            break
+        sys.stdout.write('\rPlease wait while data is being processed ' + tempSymbol)
+        sys.stdout.flush()
+        time.sleep(0.5)
+    sys.stdout.write('\rData processing completed!\n')
 
 if __name__ == "__main__":
     passwordCount, mappingDict = 5, {'a': '@', 'e': '3', 'f': 'ƒ', 'i': '!', 'o': '0', 's': '$', 'y': '¥'}
@@ -169,7 +181,7 @@ if __name__ == "__main__":
     BUFFER_SIZE = 10000
     EMBEDDING_DIMS = 256
     RNN_UNITS = 1024
-    EPOCHS = 5
+    EPOCHS = 1
 
     inputDataset = (inputDataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE))
     vocabSize = len(idsFromChars.get_vocabulary())
@@ -222,19 +234,22 @@ if __name__ == "__main__":
     else:
         resultantPasswords = resultValue[0].numpy().decode('utf-8').split('\n')
 
-    print(f'\nResultant Passwords: {resultantPasswords}')
-
+    taskCompleted = False
+    threadVar = threading.Thread(target = showAnimation)
+    threadVar.start()
     with open('genPasswords.txt', 'a') as outputFile:
         genPasswords, tempCounter = [], 0
         for i in range(len(resultantPasswords)):
             if len(resultantPasswords[i].replace('PASSWORDS:', '')) > 0:
-                genPasswords.append([resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength()])
+                genPasswords.append([resultantPasswords[i].replace('PASSWORDS:', ''), math.log(67 ** len(resultantPasswords[i].replace('PASSWORDS:', '')), 2), PasswordStats(resultantPasswords[i].replace('PASSWORDS:', '')).strength(), checkPassword(resultantPasswords[i].replace('PASSWORDS:', ''), False)])
                 outputFile.write(f"{resultantPasswords[i].replace('PASSWORDS:', '')}\n")
                 tempCounter += 1
+
+    taskCompleted = True
     print(f'\nRun time: {endTime - startTime}')
     tryAgain = 'Y'
     while tryAgain == 'Y':
-        passwordLength = int(input('Enter length of your desired password: '))
+        passwordLength = int(input('\n\nEnter length of your desired password: '))
 
         if userChoice == 2:
             print(f'\nTop {passwordCount} passwords generated for {firstName} {lastName} of {passwordLength} characters:')
@@ -242,7 +257,7 @@ if __name__ == "__main__":
             print(f'\nTop {passwordCount} passwords generated using {menuOptions[userChoice].lower()} of {passwordLength} characters:')
 
         dataFrame = pd.DataFrame.from_records(genPasswords)
-        dataFrame.columns = ['Password', 'Entropy', 'Strength']
+        dataFrame.columns = ['Password', 'Entropy', 'Strength', 'Breach Status']
         dataFrame = dataFrame.sort_values(['Strength', 'Entropy'], ascending = [False, False])
         dataFrame.insert(loc = 0, column = 'Rank', value = range(1, tempCounter + 1))
         filterCondition = (dataFrame['Password'].str.len() == passwordLength)
