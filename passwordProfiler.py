@@ -53,19 +53,7 @@ def genPasswordSet(inputWordsList, dobSuffixData, specialCharsList, parsedDateLi
             profiledData.append(f'{tempName}{dateData}'.lower())
             profiledData.append(f'{tempName}{dateData}'.upper())
             profiledData.append(f'{tempName}{dateData}'.swapcase())
-
-        for _ in range(randint(1, 20)):
-            tempRandPasswordDataOne = f'{tempName}'
-            for tempNum in range(randint(1, 5)):
-                tempRandPasswordDataOne += choice(specialCharsList)
-            profiledData.append(tempRandPasswordDataOne)
-
-        for _ in range(randint(1, 20)):
-            tempRandPasswordDataTwo = f'{tempName}'
-            for tempNum in range(randint(1, 5)):
-                tempRandPasswordDataTwo += choice(list(string.digits))
-            profiledData.append(tempRandPasswordDataTwo)
-
+            
     return list(set(profiledData))
 
 def generateWordList(firstName, lastName, dateOfBirth):
@@ -76,7 +64,7 @@ def generateWordList(firstName, lastName, dateOfBirth):
 
         parsedDate = datetime.strptime(dateOfBirth, '%d%m%Y')
         parsedDateList = [str(parsedDate.day).zfill(2), str(parsedDate.month).zfill(2), parsedDate.year]
-        finalInputWordList, lastNameWithLeet = return_leet_words(firstName, mappingDict, specialCharsList, 500), return_leet_words(lastName, mappingDict, specialCharsList, 500)
+        finalInputWordList, lastNameWithLeet = return_leet_words(firstName, mappingDict, specialCharsList, 5000), return_leet_words(lastName, mappingDict, specialCharsList, 5000)
         finalInputWordList.extend(lastNameWithLeet)
 
         dobSuffixData = set()
